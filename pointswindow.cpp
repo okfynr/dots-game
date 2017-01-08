@@ -17,9 +17,9 @@ const int playSize=600;
 PointsWindow::PointsWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    setWindowTitle("Points game");
+    setWindowTitle("Dots game");
     //showFullScreen();
-    setMouseTracking(true);
+    setMouseTracking(true);    
     redChained=0; blueChained=0; steps=0;
     offsetX0 = -10;
     offsetY0 = -40;
@@ -32,7 +32,6 @@ PointsWindow::PointsWindow(QWidget *parent)
     //QString stepstr = QString::fromStdString("steps passed: "+to_string(steps));
 
 
-
     widget = new QWidget();
     grid = new QGridLayout (this);
     maxStep = new QLineEdit("Maximum step number", this);
@@ -41,15 +40,24 @@ PointsWindow::PointsWindow(QWidget *parent)
     stepCount = new QLabel("steps passed: 0",this);
 
 
-    redLost->setText("red points chained: " + QString::number(redChained));
-    blueLost->setText("blue points chained: " + QString::number(blueChained));
+    maximumStep = maxStep -> text().toInt(&ok);
+    if (!ok)
+        maximumStep = 2000;
+    if ((maximumStep > 2000) || (maximumStep<0))
+    {
+        maximumStep = 2000;
+        maxStep  ->  setText("2000");
+    }
+
+    redLost->setText("red dots chained: " + QString::number(redChained));
+    blueLost->setText("blue dots chained: " + QString::number(blueChained));
 
 
     buttonBack = new QPushButton("-1 step", this);
     buttonBack->resize(20 , 20);
-    buttonNew = new QPushButton("new game", this);
+    buttonNew = new QPushButton(" new game", this);
     buttonNew->resize(20 , 20);
-    buttonExit = new QPushButton("exit", this);
+    buttonExit = new QPushButton("save && exit", this);
     buttonExit->resize(20 , 20);
 
     buttonRight = new QPushButton("right", this);
@@ -115,66 +123,84 @@ PointsWindow::PointsWindow(QWidget *parent)
     connect(buttonLeft, SIGNAL(clicked()), this, SLOT(MOVEleft()));
     connect(buttonUp, SIGNAL(clicked()), this, SLOT(MOVEup()));
     connect(buttonDown, SIGNAL(clicked()), this, SLOT(MOVEdown()));
+    connect(buttonBack, SIGNAL(clicked()), this, SLOT(STEPback()));
 
-
+    QMessageBox::information(this, tr("new game will start right now"), tr("first dot is blue                                          \n be prepared!"));
 
 }
-
+ofstream myfile ("gamelog.txt");
 
 void PointsWindow::mousePressEvent(QMouseEvent *event)
 {
+    //myfile.open("gamelog.txt");
     //setMouseTracking(true);
+    double modX, modY, actPy, actPx;
+    int Px, Py, whX, whY;
+    bool nextstep = true;
+
 
     cellSize = 25*scale;
+    steps++;
+
 
     QPen *pen;
     if (steps & 1) {pen = blue;} else pen = red;
 
+
     Px = event->x() + offsetX0 - (offsetX-1000) * scale;
     Py = event->y() + offsetY0 - (offsetY-1000) * scale;
 
-    //double u[1000][2];
-    double modX, modY;
-    int whX, whY;
-
     whX = Px / cellSize;
     whY = Py / cellSize;
-
-
     modX = Px - whX * cellSize;
     modY = Py - whY * cellSize;
-
-
     if ((modX <= cellSize/2)) {actPx = Px - modX;} else actPx = Px - modX + cellSize;
     if ((modY <= cellSize/2)) {actPy = Py - modY;} else actPy = Py - modY + cellSize;
 
-    ofstream myfile ("gamelog.txt");
-    if (myfile.is_open())
-    {
-        myfile << actPx  << " " << actPy;  //????????????
-        myfile << "\n";
+
+
+    for (int k=1; k<steps; k++) {
+        if ((actPx/cellSize==u[k][0]) && (actPy/cellSize==u[k][1]))
+        {
+            nextstep = false;
+            QMessageBox::warning(this, tr("Hey, you"), tr("Point the dot more accurately!"));
+            steps--;
+
+        }
     }
-    myfile.close();
 
 
-    QPainter painter;
-    painter.begin( pixmap );
-    painter.setPen( *pen );
-    painter.drawEllipse(actPx - 2.5 * scale + (offsetX-1000)*scale, actPy - 2.5 * scale + (offsetY-1000)*scale, 5 * scale, 5 * scale);
+    if (nextstep)
+    {
+        u[steps][0] = actPx/cellSize;
+        u[steps][1] = actPy/cellSize;
+        if (myfile.is_open())
+        {
+            myfile << u[steps][0]  << " " << u[steps][1] << " " << steps;
+            myfile << "\n";
+        }
 
 
-    steps++;
-    stepCount->setText("steps passed: " + QString::number(steps));
-    u[steps][0] = actPx/cellSize;
-    u[steps][1] = actPy/cellSize;
+        QPainter painter;
+        painter.begin( pixmap );
+        painter.setPen( *pen );
+        painter.drawEllipse(actPx - 2.5 * scale + (offsetX-1000)*scale, actPy - 2.5 * scale + (offsetY-1000)*scale, 5 * scale, 5 * scale);
+        stepCount->setText("steps passed: " + QString::number(steps));
+        playgnd->setPixmap(*pixmap);
 
-    playgnd->setPixmap(*pixmap);
 
+        qDebug() << "point added " << u[steps][0] << u[steps][1] << "by step " << steps << "max " << maximumStep<< endl;
+        update();
+    }
 
-    //qDebug << u[steps][0] << u[steps][1] << steps << endl;
-    qDebug() << "point added " << Px << Py << "by step " << steps <<  endl;
-    update();
+    if ((steps>(maximumStep-1)))
+    {
+        QMessageBox::information(this, tr("Game over"), tr("your game was saved"));
+        EXIT();
+    }
 }
+
+
 
 void PointsWindow::wheelEvent(QWheelEvent *event)
 {
@@ -190,7 +216,7 @@ void PointsWindow::wheelEvent(QWheelEvent *event)
 }
 
 
-void PointsWindow::mouseMoveEvent(QWheelEvent *event)
+void PointsWindow::mouseMoveEvent(QWheelEvent *event)   //not working now
 {
 
 
@@ -232,21 +258,52 @@ void PointsWindow::MOVEdown()
 
 void PointsWindow::EXIT()
 {
+    myfile.close();
     QCoreApplication::exit(0);
 }
 
 void PointsWindow::NEWgame()
 {
 
-    QMessageBox::information(this, tr("new game"), tr("will start"));
+    QMessageBox::information(this, tr("new game"), tr("will start now \n(changes are lost)"));
 
     cellSize = 25*scale;
 
     steps=0;
     stepCount->setText("steps passed: " + QString::number(steps));
 
-    for (int i = 0; i<1000; i++ ){ u[i][0]=0; u[i][1]=0;}
+    for (int i = 0; i<4000; i++ ){ u[i][0]=0; u[i][1]=0;}
 
+    gamesCount++;
+    maximumStep = maxStep -> text().toInt(&ok);
+    if (!ok)
+    {
+        maximumStep = 2000;
+        maxStep  ->  setText("Maximum step number");
+    }
+    if ((maximumStep > 2000) || (maximumStep<0))
+    {
+        maximumStep = 2000;
+        maxStep  ->  setText("2000");
+    }
+    reDraw();
+    myfile.close();
+    myfile.open("gamelog.txt");
+}
+
+void PointsWindow::STEPback()
+{
+
+    qDebug() << "point deleted: " << u[steps][0] << u[steps][1] << "by step " << steps <<  endl;
+    if (myfile.is_open())
+    {
+        myfile << u[steps][0]  << " " << u[steps][1]<< " " << steps;
+        myfile << "\n";
+    }
+    u[steps][0] = 0;
+    u[steps][1] = 0;
+    if ((steps>0)) {steps--;} else {steps=0; QMessageBox::warning(this, tr("Hey, you"), tr("No more steps back!"));}
+    stepCount->setText("steps passed: " + QString::number(steps));
     reDraw();
 }
 
@@ -262,7 +319,7 @@ void PointsWindow::REDRAW()
         for (int i=1;i<playSize/cellSize0/scaleMin;i++){painter.drawLine(0, i*cellSize + (offsetY-1000)*scale , playSize, i*cellSize + (offsetY-1000)*scale);}
         for (int i=1;i<playSize/cellSize0/scaleMin;i++){painter.drawLine(i*cellSize + (offsetX-1000)*scale, 0 , i*cellSize + (offsetX-1000)*scale, playSize);}
 
-        for (int j=0; j<4000; j++)
+        for (int j=1; j<4000; j++)
         {
             QPen *pen;
             if (j & 1) {pen = blue;} else pen = red;
@@ -271,6 +328,7 @@ void PointsWindow::REDRAW()
         }
 
         painter.end();
+        //myfile ("gamelog"  + to_string(gamesCount) +".txt");
         playgnd->setPixmap(*pixmap);
         update();
 
