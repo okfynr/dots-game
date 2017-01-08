@@ -34,6 +34,7 @@ private slots:
     void MOVEleft();
     void MOVEup();
     void MOVEdown();
+    void STEPback();
 private:
     QWidget *widget;
     QGridLayout *grid;
@@ -51,8 +52,9 @@ private:
 
 
     //void mouseMoveEvent(QMouseEvent *event);
-    int Py, Px;
-    double cellSize, cellSize0=25, offsetX0, offsetY0, offsetX=400, offsetY=400, actPy, actPx, scale=1, scaleMin=0.25;
+    int gamesCount=0, maximumStep=2;
+    bool ok;
+    double cellSize, cellSize0=25, offsetX0, offsetY0, offsetX=400, offsetY=400, scale=1, scaleMin=0.25;
     double u[4000][2];
 
 };
