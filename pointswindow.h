@@ -3,10 +3,14 @@
 
 #include <QWidget>
 #include <QGraphicsScene>
-#include<QGraphicsSceneMouseEvent>
+#include<QGraphicsSceneMouseEvent>  //is it neccesary?
 
 
 #include <QMainWindow>
+
+#include "chaining.h"
+
+
 
 class QGridLayout;
 class QPixmap;
@@ -35,6 +39,8 @@ private slots:
     void MOVEup();
     void MOVEdown();
     void STEPback();
+    void NEWchain(sending_type);
+
 private:
     QWidget *widget;
     QGridLayout *grid;
@@ -44,18 +50,21 @@ private:
     QLineEdit *maxStep;
     QPushButton *buttonBack, *buttonNew, *buttonExit;
     QPushButton *buttonRight, *buttonLeft, *buttonUp, *buttonDown;
+    Chaining *thread;
+
     int redChained, blueChained, steps;
 
-    void mousePressEvent(QMouseEvent *event);
+    void mouseDoubleClickEvent(QMouseEvent *event);
     void wheelEvent(QWheelEvent *event);
-    void mouseMoveEvent(QWheelEvent *event);
+    void mouseMoveEvent(QMouseEvent *event);
 
+    void OLDchains();
+    void rotate(int, double &, double &);
 
-    //void mouseMoveEvent(QMouseEvent *event);
     int gamesCount=0, maximumStep=2;
     bool ok;
     double cellSize, cellSize0=25, offsetX0, offsetY0, offsetX=400, offsetY=400, scale=1, scaleMin=0.25;
-    double u[4000][2];
+    double u[4000][2];  //MUST be changed to vector<pair<double, double>> or to vector<vector<double>>   !!!
 
 };
 
