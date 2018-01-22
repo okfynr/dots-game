@@ -1,9 +1,7 @@
 #include <QtGui>
 #include <QApplication>
 #include <QtWidgets>
-#include <stdio.h>
-#include <string>            //god, why are there so many directives...
-#include <QGraphicsScene>
+#include <string>
 #include <QDebug>
 #include <cmath>
 #include <iostream>
@@ -85,9 +83,10 @@ PointsWindow::PointsWindow(QWidget *parent)
         painter.begin( pixmap);
         painter.fillRect(0, 0, pixmap->width(), pixmap->height(), QColor (255, 255, 255));
         painter.drawRect(-1, -1, playSize + 1, playSize + 1);
+
         for (int i = 1; i < playSize / cellSize0 / scaleMin; i++) {
-            painter.drawLine(0, i * cellSize + (offsetY - 1000) * scale,
-                      playSize, i * cellSize + (offsetY - 1000) * scale);
+            painter.drawLine(0, i * cellSize + (offsetY - 1000) * scale, //why -1000? to avoid ugly effects near 0
+                      playSize, i * cellSize + (offsetY - 1000) * scale);//just a quite big number, nothing else
         }
         for (int i = 1; i < playSize / cellSize0 / scaleMin; i++) {
             painter.drawLine(i * cellSize + (offsetX - 1000) * scale, 0,
@@ -149,8 +148,18 @@ ofstream myfile ("gamelog.txt");
 
      // new dot is added with following:
 
-void PointsWindow::mouseDoubleClickEvent(QMouseEvent *event)
+void PointsWindow::mousePressEvent(QMouseEvent *event)
 {
+    mouse_pressed_pos.first = event->screenPos().toPoint().x();
+    mouse_pressed_pos.second = event->screenPos().toPoint().y();
+    offset_pressed_pos.first = offsetX;
+    offset_pressed_pos.second = offsetY;
+    if (event->button() == 1) {
+        mouse_pressed_pos.first = 0;
+        mouse_pressed_pos.second = 0;
+    } else
+        return;
+
     //myfile.open("gamelog.txt");
     //setMouseTracking(true);
     double modX, modY, actPy, actPx;
@@ -162,12 +171,12 @@ void PointsWindow::mouseDoubleClickEvent(QMouseEvent *event)
     steps++;    //should be placed in 212 row?
 
 
-    QPen *pen;
+    /*QPen *pen;
     if (steps & 1) {
         pen = blue;
     } else {
         pen = red;
-    }
+    }*/
 
 
     Px = event->x() + offsetX0 - (offsetX - 1000) * scale;
@@ -221,7 +230,7 @@ void PointsWindow::mouseDoubleClickEvent(QMouseEvent *event)
         //it must invoke calculations for chainind dots, after pointing of new dot
 
 
-        typedef QVector<int>  sending_type;
+        typedef QVector<int>  sending_type;               // crutch again
         qRegisterMetaType<sending_type>("sending_type");
 
         thread = new Chaining(u[steps][0], u[steps][1], steps, this);
@@ -230,7 +239,7 @@ void PointsWindow::mouseDoubleClickEvent(QMouseEvent *event)
 
         thread  ->  start();
 
-        qDebug() << "point added " << u[steps][0] << u[steps][1] << "by step " << steps << "max " << maximumStep;
+        //qDebug() << "point added " << u[steps][0] << u[steps][1] << "by step " << steps << "max " << maximumStep;
         update();
     }
 
@@ -271,42 +280,42 @@ void PointsWindow::wheelEvent(QWheelEvent *event)
 
 void PointsWindow::mouseMoveEvent(QMouseEvent *event)
 {
-
+    if (mouse_pressed_pos.first == 0 && mouse_pressed_pos.second == 0) return;
     QPointF Point = event->screenPos();
-    offsetX = Point.x() / scale;
-    offsetY = Point.y() / scale;
+    offsetX = offset_pressed_pos.first + (Point.x() - mouse_pressed_pos.first) / scale;
+    offsetY = offset_pressed_pos.second + (Point.y() - mouse_pressed_pos.second) / scale;
 
-    qDebug() << "offset tuned " << (offsetX - 1000) << (offsetY - 1000) << endl;
+    //qDebug() << "offset tuned " << (offsetX - 1000) << (offsetY - 1000) << endl;
 
     reDraw();
 }
 
-// buttons to move playgnd, if you despise mouse for this
+// buttons to move playgnd, if you despise mouse to use
 
 void PointsWindow::MOVEright()
 {
-    offsetX += -30;
+    offsetX += -100;
     qDebug() << "offset tuned " << (offsetX-1000) << (offsetY-1000) << endl;
     reDraw();
 }
 
 void PointsWindow::MOVEleft()
 {
-    offsetX += 30;
+    offsetX += 100;
     qDebug() << "offset tuned " << (offsetX-1000) << (offsetY-1000) << endl;
     reDraw();
 }
 
 void PointsWindow::MOVEup()
 {
-    offsetY += 30;
+    offsetY += 100;
     qDebug() << "offset tuned " << (offsetX-1000) << (offsetY-1000) << endl;
     reDraw();
 }
 
 void PointsWindow::MOVEdown()
 {
-    offsetY += -30;
+    offsetY += -100;
     qDebug() << "offset tuned " << (offsetX-1000) << (offsetY-1000) << endl;
     reDraw();
 }
@@ -377,7 +386,7 @@ void PointsWindow::STEPback() //not fully works: for chains, also needed foe cou
         }
     }
     //delete it:
-    for (int i = 0; i < (int)deleted_chains.size(); i++) {
+    for (size_t i = 0; i < deleted_chains.size(); i++) {
         old_chains[deleted_chains[i]].clear();
         qDebug() << "chain" << deleted_chains[i] << "deleted";
     }
@@ -475,7 +484,7 @@ void PointsWindow::NEWchain(sending_type chain)
                 rotate(beam_angle, xj, yj);
                 rotate(beam_angle, point_x, point_y);
 
-                if ( (yi < point_y && yj >= point_y || yj < point_y && yi >= point_y)
+                if ( ( (yi < point_y && yj >= point_y) || (yj < point_y && yi >= point_y) )
                      &&
                      (xi + (point_y - yi) / (yj - yi) * (xj - xi) < point_x) ) {
                     chained = !chained;

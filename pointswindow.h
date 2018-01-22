@@ -2,9 +2,6 @@
 #define POINTSWINDOW_H
 
 #include <QWidget>
-#include <QGraphicsScene>
-#include<QGraphicsSceneMouseEvent>  //is it neccesary?
-
 
 #include <QMainWindow>
 
@@ -54,16 +51,19 @@ private:
 
     int redChained, blueChained, steps;
 
-    void mouseDoubleClickEvent(QMouseEvent *event);
+    void mousePressEvent(QMouseEvent *event);
     void wheelEvent(QWheelEvent *event);
     void mouseMoveEvent(QMouseEvent *event);
+
+    QPair<double, double> mouse_pressed_pos;
+    QPair<double, double> offset_pressed_pos;
 
     void OLDchains();
     void rotate(int, double &, double &);
 
     int gamesCount=0, maximumStep=2;
     bool ok;
-    double cellSize, cellSize0=25, offsetX0, offsetY0, offsetX=400, offsetY=400, scale=1, scaleMin=0.25;
+    double cellSize, cellSize0=25, offsetX0, offsetY0, offsetX=-600, offsetY=-600, scale=1, scaleMin=0.25;
     double u[4000][2];  //MUST be changed to vector<pair<double, double>> or to vector<vector<double>>   !!!
 
 };

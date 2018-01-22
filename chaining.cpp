@@ -1,4 +1,3 @@
-#include <QtGui>
 #include "qmath.h"
 #include <iostream>
 #include <fstream>
@@ -104,15 +103,15 @@ void Chaining::run()
     //qDebug() << "then DFS is coming! " << Edges;
     dfs(Step - 1);               // iterator Step begins with 1 and it is useful not here
 
-    int max = 0;
-    for (auto i = 0; i < (int)cycle.size(); i++) {
-        for (auto j = 0; j < (int)cycle[i].size(); j++) {
+    size_t max = 0;
+    for (size_t i = 0; i < cycle.size(); i++) {
+        for (size_t j = 0; j < cycle[i].size(); j++) {
             if ((cycle[i][j] == (Step - 1)) && (cycle[i].size() > max)) {
                 max = i;
             }
         }
     }
-    typedef QVector<int>  sending_type;
+    typedef QVector<int>  sending_type;             //crutch, wtf
     qRegisterMetaType<sending_type>("sending_type");
     if (max != 0) {
         sending_type sended;
