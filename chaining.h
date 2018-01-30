@@ -16,7 +16,7 @@ class Chaining : public QThread
     Q_OBJECT
 
 public:
-    Chaining(double, double, int, QObject*);
+    Chaining(int, int, int, QObject*);
     ~Chaining();
 
 signals:
@@ -26,7 +26,7 @@ protected:
      void run();
 
 private:
-    double xDot, yDot;
+    int xDot, yDot;
     int Step;
 
     int add_cycle(int, int);

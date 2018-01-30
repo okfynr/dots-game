@@ -64,7 +64,9 @@ private:
     int gamesCount=0, maximumStep=2;
     bool ok;
     double cellSize, cellSize0=25, offsetX0, offsetY0, offsetX=-600, offsetY=-600, scale=1, scaleMin=0.25;
-    double u[4000][2];  //MUST be changed to vector<pair<double, double>> or to vector<vector<double>>   !!!
+    vector<vector<int>> u;
+    QVector<QVector<QPair<int, int>>> old_chains;
+    QVector<QPair<int, int>> blueChaind, redChaind;
 
 };
 

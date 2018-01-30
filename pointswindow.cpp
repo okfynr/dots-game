@@ -11,9 +11,8 @@
 
 using namespace std;
 
-const int playSize=600;
-QVector<QVector<QPair<int, int>>> old_chains;
-QVector<QPair<int, int>> blueChaind, redChaind;
+static const int playSize=600;
+
 
 
     // CREATING PROGRAM INTERFACE
@@ -28,8 +27,6 @@ PointsWindow::PointsWindow(QWidget *parent)
     redChained = 0; blueChained = 0; steps = 0;
     offsetX0 = -10;
     offsetY0 = -40;
-    //offsetX = 0;
-    //offsetY = 0;
 
 
     //QString redLostr = QString::fromStdString("red points chained: "+to_string(redChained));
@@ -37,8 +34,8 @@ PointsWindow::PointsWindow(QWidget *parent)
     //QString stepstr = QString::fromStdString("steps passed: "+to_string(steps));
 
 
-    widget = new QWidget();
-    grid = new QGridLayout (this);
+    widget = new QWidget(this);
+    grid = new QGridLayout ();
     maxStep = new QLineEdit("Maximum step number", this);
     redLost = new QLabel("red points chained: ", this);
     blueLost = new QLabel("blue points chained: ", this);
@@ -57,22 +54,27 @@ PointsWindow::PointsWindow(QWidget *parent)
     redLost->setText("red dots chained: " + QString::number(redChained));
     blueLost->setText("blue dots chained: " + QString::number(blueChained));
 
+    auto buttonLong = [&](QString text){
+        QPushButton * toButton = new QPushButton(text, this);
+        toButton->resize(10 , 40);
+        return toButton;
+    };
 
-    buttonBack = new QPushButton("-1 step", this);
-    buttonBack->resize(20 , 20);
-    buttonNew = new QPushButton(" new game", this);
-    buttonNew->resize(20 , 20);
-    buttonExit = new QPushButton("save && exit", this);
-    buttonExit->resize(20 , 20);
+    auto buttonSquare = [&](QString text){
+        QPushButton * toButton = new QPushButton(text, this);
+        toButton->resize(20 , 20);
+        return toButton;
+    };
 
-    buttonRight = new QPushButton("right", this);
-    buttonRight->resize(10 , 40);
-    buttonLeft = new QPushButton("left", this);
-    buttonLeft->resize(10 , 40);
-    buttonUp = new QPushButton("up", this);
-    buttonUp->resize(20 , 20);
-    buttonDown = new QPushButton("down", this);
-    buttonDown->resize(20 , 20);
+
+    buttonBack = buttonSquare("-1 step");
+    buttonNew = buttonSquare(" new game");
+    buttonExit = buttonSquare("save && exit");
+
+    buttonRight = buttonLong("right");
+    buttonLeft = buttonLong("left");
+    buttonUp = buttonSquare("up");
+    buttonDown = buttonSquare("down");
 
     pixmap = new QPixmap(playSize,playSize);
 
@@ -98,12 +100,9 @@ PointsWindow::PointsWindow(QWidget *parent)
     playgnd = new QLabel(this);
     playgnd->setPixmap(*pixmap);
 
-    QColor redColor(255, 0, 0);
-    QColor blueColor(0, 0, 255);
-    QColor blackColor(255, 255, 255);
-    red = new QPen( redColor );
-    blue = new QPen( blueColor );
-    black = new QPen( blackColor );
+    red = new QPen( QColor(255, 0, 0) );
+    blue = new QPen( QColor(0, 0, 255) );
+    black = new QPen( QColor(255, 255, 255) );
     red->setWidth( 3 );
     blue->setWidth( 3 );
     black->setWidth( 1 );
@@ -113,8 +112,6 @@ PointsWindow::PointsWindow(QWidget *parent)
     grid->addWidget( buttonNew, 0, 2);
     grid->addWidget( buttonExit, 0, 4, 1, 2);
     grid->addWidget( playgnd, 1, 0, 3,3);
- //       grid->setColumnMinimumWidth(0, playSize+10);
- //       grid->setRowMinimumHeight(1, playSize+10);
 
     grid->addWidget( buttonUp, 1, 3, 1, 2);
     grid->addWidget( buttonLeft, 2, 3, 2, 1);
@@ -126,7 +123,7 @@ PointsWindow::PointsWindow(QWidget *parent)
     grid->addWidget(stepCount, 4 , 2);
 
     widget->setLayout(grid);
-    setCentralWidget(widget);                             //WHY it is NOT working w/out this variable widget??
+    setCentralWidget(widget);
 
     connect(buttonExit, SIGNAL(clicked()), this, SLOT(EXIT()));
     connect(buttonNew, SIGNAL(clicked()), this, SLOT(NEWgame()));
@@ -137,7 +134,9 @@ PointsWindow::PointsWindow(QWidget *parent)
     connect(buttonDown, SIGNAL(clicked()), this, SLOT(MOVEdown()));
     connect(buttonBack, SIGNAL(clicked()), this, SLOT(STEPback()));
 
-    QMessageBox::information(this, tr("new game will start right now"), tr("first dot is blue                                          \n be prepared!"));
+    QMessageBox::information(this, tr("new game will start right now"),
+                             tr("first dot is blue                                          \n be prepared!"));
+    u.push_back({0, 0}); //will be removed, when step will begin with 0
 
 }
 
@@ -191,7 +190,7 @@ void PointsWindow::mousePressEvent(QMouseEvent *event)
 
 
 
-    for (int k = 1; k < steps; k++) {
+    for (size_t k = 1; k < u.size(); k++) {
         if ((actPx / cellSize == u[k][0]) && (actPy / cellSize == u[k][1]))
         {
             nextstep = false;
@@ -204,8 +203,12 @@ void PointsWindow::mousePressEvent(QMouseEvent *event)
 
     if (nextstep)
     {
-        u[steps][0] = actPx / cellSize;
-        u[steps][1] = actPy / cellSize;
+        double fir = actPx / cellSize, sec = actPy / cellSize;
+        vector<int> added{static_cast<int>(fir), static_cast<int>(sec)};
+        u.push_back(added);
+
+        //u[steps][0] = actPx / cellSize;
+        //u[steps][1] = actPy / cellSize;
         if (myfile.is_open())
         {
             myfile << u[steps][0]  << " " << u[steps][1] << " " << steps;
@@ -261,10 +264,14 @@ void PointsWindow::mousePressEvent(QMouseEvent *event)
 void PointsWindow::wheelEvent(QWheelEvent *event)
 {
     QPoint numDegrees = event->angleDelta() / 8;
+    //setMouseTracking(true);
+    //QPointF Point = event->screenPos();
     int Inc = numDegrees.y();
     double scaleInc = Inc;
     if ((scale > (scaleMin + 0.01))) {
         scale += scaleInc / 100;
+        //offsetX -= scale*Point.x();
+        //offsetY -= scale*Point.y();
     } else {
         scale += abs(scaleInc / 200) + scaleInc / 200;
     }
@@ -276,7 +283,7 @@ void PointsWindow::wheelEvent(QWheelEvent *event)
 }
 
 
-  // changing place of playground, implied, that you will move it with pushed button
+  // changing place of playground, implied, that you will move it with pushed right mouse button
 
 void PointsWindow::mouseMoveEvent(QMouseEvent *event)
 {
@@ -332,7 +339,7 @@ void PointsWindow::EXIT()
 
  // it will operates every new game
 
-void PointsWindow::NEWgame()
+void PointsWindow::NEWgame() //chains are not updating
 {
 
     QMessageBox::information(this, tr("new game"), tr("will start now \n(changes are lost)"));
@@ -343,14 +350,16 @@ void PointsWindow::NEWgame()
     old_chains.clear();
     stepCount->setText("steps passed: " + QString::number(steps));
 
-    for (int i = 0; i < 4000; i++ ){ u[i][0] = 0; u[i][1] = 0;}
+    u.clear();
+    u.push_back({0, 0});
+
 
     gamesCount++;
     maximumStep = maxStep -> text().toInt(&ok);
     if (!ok)
     {
         maximumStep = 2000;
-        maxStep  ->  setText("Maximum step number"); // will not be needed with vectors
+        maxStep  ->  setText("Maximum step number");
     }
     if ((maximumStep > 2000) || (maximumStep < 0))
     {
@@ -364,7 +373,7 @@ void PointsWindow::NEWgame()
 
   // member function for latest pointed dot deleting
 
-void PointsWindow::STEPback() //not fully works: for chains, also needed foe counters
+void PointsWindow::STEPback() //not fully works: for chains, also needed for counters
 {
 
     qDebug() << "point deleted: " << u[steps][0] << u[steps][1] << "by step " << steps <<  endl;
@@ -395,8 +404,10 @@ void PointsWindow::STEPback() //not fully works: for chains, also needed foe cou
     //if (old_chains[0].size() < 2) old_chains.clear();
 
     // then, delete our dot:
-    u[steps][0] = 0;
-    u[steps][1] = 0;
+
+    u.pop_back();
+    //u[steps][0] = 0;
+    //u[steps][1] = 0;
 
     if ((steps > 0)) {
         steps--;
@@ -429,7 +440,7 @@ void PointsWindow::REDRAW()
     painter.end();
 
     painter.begin( pixmap);
-        for (int j = 1; j < 4000; j++)
+        for (size_t j = 1; j < u.size(); j++)
         {
             QPen *pen;
             if (j & 1) {pen = blue;} else pen = red;
@@ -462,22 +473,28 @@ void PointsWindow::NEWchain(sending_type chain)
     bool circuit_broken = true, chained = false, chain_added = false;
     int broken = 0; //iterator for chained dots in new cycle: if not 0, cycle will not be added in old chains
 
+
     //meet the old_chains massive of coordinats of points of chains and color in last member for every chain
-    for (int m = 0; m < (int)old_chains.size(); m++) {      //for every old chain
+    for (size_t m = 0; m < old_chains.size(); m++) {      //for every old chain
+
         chained = false;
         chain_added = true; // so chain will not be added in old chains by default
         qDebug() << steps << "dots will be checked";
-        for (int k = 0; k < steps; k++){        // for every dot, except "0" damned dot -> k+1 used
+
+
+        for (size_t k = 0; k < (u.size() - 1); k++){        // for every dot, except "0" damned dot -> k+1 used
 
             qDebug() << "checking dot chaining...";
             chained = false;
-            int j = old_chains[m].size() - 2;
-            for (int i = 0; i < ((int)old_chains[m].size() - 1); i++) { // for every dot in chaining (around) dot
+            size_t j = old_chains[m].size() - 2;
+
+
+            for (size_t i = 0; i < (old_chains[m].size() - 1); i++) { // for every dot in chaining (around) dot
 
                 //now, meet the ith and jth points of chaining edge and chained point coordinates
-                double xi = old_chains[m][i].first, yi = old_chains[m][i].second,
-                        xj = old_chains[m][j].first, yj = old_chains[m][j].second,
-                        point_x = u[k+1][0], point_y = u[k+1][1];
+                double xi = old_chains[m][i].first, yi = old_chains[m][i].second;
+                double xj = old_chains[m][j].first, yj = old_chains[m][j].second;
+                double point_x = u[k+1][0], point_y = u[k+1][1];
 
                 int beam_angle = 25; // angle for our beam, searching for chaining edges
                 rotate(beam_angle, xi, yi);
@@ -503,13 +520,12 @@ void PointsWindow::NEWchain(sending_type chain)
 
             if (chained) {
                 qDebug() << "chained dot" << k << "detected";
-                QPair<int, int> k_th{(int)u[k][0], (int)u[k][1]};
 
                 if (old_chains[m].last().first & 1) {
-                    blueChaind.push_back(k_th);
+                    blueChaind.push_back(qMakePair(u[k][0], u[k][1]));
                     qDebug() << "so, blueChaind:" << blueChaind;
                 } else {
-                    redChaind.push_back(k_th);
+                    redChaind.push_back(qMakePair(u[k][0], u[k][1]));
                     qDebug() << "so, redChaind:" << redChaind;
                 }
 
@@ -533,13 +549,11 @@ void PointsWindow::NEWchain(sending_type chain)
         qDebug() << "accepted!" << endl;
         QVector<QPair<int, int>> NewOld;
 
-        for (int k = 0; k < (int)chain.size(); k++){
-            QPair<int, int> k_th{(int)u[chain[k]+1][0], (int)u[chain[k]+1][1]};
-            NewOld.push_back(k_th);
+        for (size_t k = 0; k < chain.size(); k++){
+            NewOld.push_back(qMakePair(u[chain[k]+1][0], u[chain[k]+1][1]));
         }
-        QPair<int, int> color{(chain[0] & 1), 0};
-        qDebug() << "got chain, colored" << color << "in old chains";
-        NewOld.push_back(color);    //color of chain should be written also
+        qDebug() << "got chain, colored" << (chain[0] & 1) << "in old chains";
+        NewOld.push_back(qMakePair((chain[0] & 1), 0));    //color of chain should be written also???????
         old_chains.push_back(NewOld);
     }
     qDebug() << "old_chains:" << old_chains << endl;
@@ -567,14 +581,17 @@ void PointsWindow::OLDchains()
 {
     QPainter painter;
     painter.begin( pixmap);
-    for (int m = 0; m < (int)old_chains.size(); m++) {  // for every old chain
+
+    for (size_t m = 0; m < old_chains.size(); m++) {  // for every old chain
+
         int j = old_chains[m].size() - 2;
 
         QPainterPath path;
         path.moveTo(old_chains[m][0].first * cellSize  + (offsetX - 1000) * scale,
                     old_chains[m][0].second * cellSize  + ( offsetY - 1000) * scale);
 
-        for (int i = 0; i < ((int)old_chains[m].size() - 1); i++) { // for every dot/edge in old chain
+        for (size_t i = 0; i < (old_chains[m].size() - 1); i++) { // for every dot/edge in old chain
+
             QPen *pen;                                              //except last -- it is for color
 
             if (old_chains[m].last().first & 1) {pen = red;} else pen = blue;

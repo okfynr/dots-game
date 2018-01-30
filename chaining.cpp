@@ -10,16 +10,17 @@
 
 using std::vector;
 
-QVector<QPair<double, double>> Dots;
-vector<int> color;
-int ncycle;
-vector<int> path;
-QVector<QVector<int>> Edges;
-vector<vector<int>> cycle;
+//orly static?
+static QVector<QPair<int, int>> Dots;
+static vector<int> color;
+static int ncycle;
+static vector<int> path;
+static QVector<QVector<int>> Edges;
+static vector<vector<int>> cycle;
 
 
 
-Chaining::Chaining(double xP, double yP, int step, QObject *parent)
+Chaining::Chaining(int xP, int yP, int step, QObject *parent)
     : QThread(parent)
 {
     this -> xDot = xP;
@@ -50,13 +51,12 @@ void Chaining::run()
     //QVector<QPair<double, double>> redDots, blueDots;
     //vector<vector<int>> redEdges, blueEdges;
 
-    QPair<double, double> cur_pos{xDot, yDot};
 
     if (Step & 1) {
-         Dots.push_back(cur_pos);
+         Dots.push_back(qMakePair(xDot, yDot));
      }
      else {
-        Dots.push_back(cur_pos);
+        Dots.push_back(qMakePair(xDot, yDot));
      }
 
     //qDebug() << "hello, i am here to chain smth: ";
@@ -148,7 +148,7 @@ void Chaining::dfs(int dfsed_dot)
     color[dfsed_dot] = 1;
     //qDebug() << "DFS is coming! " << Edges[dfsed_dot].size() << endl;// << Edges.size();        if (i & 1)
 
-    for(int i = 0; i < (int)Edges[dfsed_dot].size(); i++) // roaming through all neighbours
+    for(size_t i = 0; i < Edges[dfsed_dot].size(); i++) // roaming through all neighbours
     {
         //qDebug() << "DFS is coming!";
 
