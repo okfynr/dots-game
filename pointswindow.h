@@ -5,7 +5,7 @@
 
 #include <QMainWindow>
 
-#include "chaining.h"
+#include "game.h"
 
 
 
@@ -21,7 +21,7 @@ class PointsWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    PointsWindow(QWidget *parent = 0);
+    PointsWindow(QWidget *parent = nullptr);
     ~PointsWindow();
 
 signals:
@@ -36,9 +36,9 @@ private slots:
     void MOVEup();
     void MOVEdown();
     void STEPback();
-    void NEWchain(sending_type);
 
 private:
+    Game *current_game;
     QWidget *widget;
     QGridLayout *grid;
     QLabel *redLost, *blueLost, *stepCount, *playgnd;
@@ -47,26 +47,29 @@ private:
     QLineEdit *maxStep;
     QPushButton *buttonBack, *buttonNew, *buttonExit;
     QPushButton *buttonRight, *buttonLeft, *buttonUp, *buttonDown;
-    Chaining *thread;
 
-    int redChained, blueChained, steps;
+    int redChained, blueChained;
+    size_t steps;
 
     void mousePressEvent(QMouseEvent *event);
     void wheelEvent(QWheelEvent *event);
     void mouseMoveEvent(QMouseEvent *event);
 
-    QPair<double, double> mouse_pressed_pos;
+    QPair<int, int> mouse_pressed_pos;
     QPair<double, double> offset_pressed_pos;
 
     void OLDchains();
-    void rotate(int, double &, double &);
 
-    int gamesCount=0, maximumStep=2;
-    bool ok;
-    double cellSize, cellSize0=25, offsetX0, offsetY0, offsetX=-600, offsetY=-600, scale=1, scaleMin=0.25;
-    vector<vector<int>> u;
-    QVector<QVector<QPair<int, int>>> old_chains;
-    QVector<QPair<int, int>> blueChaind, redChaind;
+    int gamesCount, maximumStep;
+    bool maxstep_value_ok;
+    double cellSize;
+    double cellSize0;
+    int offsetX0;
+    int offsetY0;
+    double offsetX;
+    double offsetY;
+    double scale;
+    double scaleMin;
 
 };
 

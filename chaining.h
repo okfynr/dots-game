@@ -29,7 +29,7 @@ private:
     int xDot, yDot;
     int Step;
 
-    int add_cycle(int, int);
+    size_t add_cycle(int, int);
     void dfs(int);
     //int true_cycle(vector<vector<int> > &, int);
 

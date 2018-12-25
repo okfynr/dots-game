@@ -25,7 +25,9 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += main.cpp\
         pointswindow.cpp \
-    chaining.cpp
+    chaining.cpp \
+    game.cpp
 
 HEADERS  += pointswindow.h \
-    chaining.h
+    chaining.h \
+    game.h
