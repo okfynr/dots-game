@@ -10,17 +10,10 @@
 
 using std::vector;
 
-static QVector<QPair<int, int>> Dots;
-static vector<int> color;
-static size_t ncycle;
-static vector<int> path;
-static QVector<QVector<int>> edges;
-static vector<vector<int>> cycle;
 
 
-
-Chaining::Chaining(int xP, int yP, int step, QObject *parent)
-    : QThread(parent)
+Chaining::Chaining(int xP, int yP, int step, QVector<QPair<int, int> > & dots)
+    : Dots(dots)
 {
     this -> xDot = xP;
     this -> yDot = yP;
@@ -30,19 +23,18 @@ Chaining::Chaining(int xP, int yP, int step, QObject *parent)
 
 Chaining::~Chaining()
 {
-    qDebug() << "destroyed";
+    //qDebug() << "destroyed";
 }
 
-void Chaining::run()
+void Chaining::check_chains()
 {
-    color.resize(Step);
-    for (auto i : color) color[i] = 0;
+    //algo must be fully remade
+
+    edges_color.resize(Step);
+    for (auto & edge_color : edges_color) edge_color = 0;
     ncycle = 0;     //0 cycles found right here
-    path.clear();
     path.resize(Step);
-    edges.clear();
     edges.resize(Step);
-    cycle.clear();
 
     //qDebug() << "no DFS is coming!" << Edges[0] << " " << Edges[1] << endl;
     //QVector<QPair<double, double>> redDots, blueDots;
@@ -74,27 +66,28 @@ void Chaining::run()
 
 
 
-    //qDebug() << "then DFS is coming! " << Edges;
+    //qDebug() << "then DFS is coming! " << edges;
     dfs(Step - 1);               // iterator Step begins with 1 and it is useful not here
 
-    size_t max = 0;
+    typedef QVector<int>  sending_type;
+    qRegisterMetaType<sending_type>("sending_type");
+
+    size_t max = 4;
     for (size_t i = 0; i < cycle.size(); ++i) {
         for (size_t j = 0; j < cycle[i].size(); ++j) {
             if ((cycle[i][j] == (Step - 1)) && (cycle[i].size() > max)) {
                 max = i;
+                sending_type sended;
+                sended.resize(static_cast<int>(cycle[max].size()));
+                sended = sending_type::fromStdVector(cycle[max]);
+                qDebug() << "cycle sent: " << sended << ". ";
+
+                emit newChain(sended);
             }
         }
     }
-    typedef QVector<int>  sending_type;             //crutch, wtf
-    qRegisterMetaType<sending_type>("sending_type");
-    if (max != 0) {
-        sending_type sended;
-        sended.resize(static_cast<int>(cycle[max].size()));
-        sended = sending_type::fromStdVector(cycle[max]);
-
-        emit newChain(sended);
-        this->quit();
-    }
+//    if (max != 0) {
+//    }
     //qDebug() << cycle << endl;
     //qDebug() << "but true cycle is " << cycle[max];
 
@@ -109,10 +102,10 @@ size_t Chaining::add_cycle(int cycle_end, int cycle_st)
     cycle[ncycle].clear();
     cycle[ncycle].push_back(cycle_st);
 
-    qDebug() << "current path: " << path;
+    //qDebug() << "current path: " << path << "size: " << path.size();
     for(int v = cycle_end; v != cycle_st; v = path[v])
     {
-        qDebug() << v << "not eq " << cycle_st;
+        //qDebug() << v << "not eq " << cycle_st;
         cycle[ncycle].push_back(v);
     }
     cycle[ncycle].push_back(cycle_st);
@@ -125,7 +118,7 @@ size_t Chaining::add_cycle(int cycle_end, int cycle_st)
 void Chaining::dfs(int dfsed_dot)
 {
 
-    color[dfsed_dot] = 1;
+    edges_color[dfsed_dot] = 1;
     //qDebug() << "DFS is coming! " << Edges[dfsed_dot].size() << endl;// << Edges.size();        if (i & 1)
 
     // roaming through all neighbours
@@ -134,13 +127,13 @@ void Chaining::dfs(int dfsed_dot)
         //qDebug() << "DFS is coming!";
 
         //i-th neighbour of dfsed dot with given key
-        int next_dot = edges[dfsed_dot][i];
-        if(color[next_dot] == 0)
+        size_t next_dot = edges[dfsed_dot][i];
+        if(edges_color[next_dot] == 0)
         {
             path[next_dot] = dfsed_dot;
             dfs(next_dot);
         }
-        else if(color[next_dot] == 1)
+        else if(edges_color[next_dot] == 1)
         {
             if(add_cycle(dfsed_dot, next_dot) > 4) {  // avoiding of trivial cases
                 //qDebug() << "cycle found: " << cycle[ncycle] << ". ";
@@ -150,7 +143,7 @@ void Chaining::dfs(int dfsed_dot)
             else cycle.pop_back();
         }
     }
-    color[dfsed_dot] = 0;
+    edges_color[dfsed_dot] = 0;
 }
 
 /*int Chaining::true_cycle(vector<vector<int>> & cycles, int point)

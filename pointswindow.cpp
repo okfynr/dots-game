@@ -127,6 +127,7 @@ PointsWindow::PointsWindow(QWidget *parent)
     connect(buttonExit, SIGNAL(clicked()), this, SLOT(EXIT()));
     connect(buttonNew, SIGNAL(clicked()), this, SLOT(NEWgame()));
     connect(this, SIGNAL(reDraw()), this, SLOT(REDRAW()));
+    connect(current_game, SIGNAL(chains_changed()), this, SLOT(REDRAW()));
     connect(buttonRight, SIGNAL(clicked()), this, SLOT(MOVEright()));
     connect(buttonLeft, SIGNAL(clicked()), this, SLOT(MOVEleft()));
     connect(buttonUp, SIGNAL(clicked()), this, SLOT(MOVEup()));
@@ -169,12 +170,12 @@ void PointsWindow::mousePressEvent(QMouseEvent *event)
     double pointY = std::floor((event->y() + offsetY0 - (offsetY - 1000) * scale) / cellSize + 0.5);
 
 
-    for (size_t k = 0; k < current_game->getSize(); ++k) {
+    for (size_t k = 1; k < current_game->getSize(); ++k) {
         if (fabs(pointX - current_game->getPointX(k)) < 1e-3
          && fabs(pointY - current_game->getPointY(k)) < 1e-3)
         {
             nextstep = false;
-            QMessageBox::warning(this, tr("Hey, you"), tr("Point the dot more accurately!"));
+            //QMessageBox::warning(this, tr("Hey, you"), tr("Point the dot more accurately!"));
             steps--;
 
         }
@@ -197,7 +198,7 @@ void PointsWindow::mousePressEvent(QMouseEvent *event)
             myfile << "\n";
         }
 
-        stepCount->setText("steps passed: " + QString::number(current_game->getSize()));
+        stepCount->setText(QString("steps passed: ") + QString::number(current_game->getSize()));
         reDraw();
         update();
     }

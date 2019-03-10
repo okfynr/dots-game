@@ -5,20 +5,21 @@
 #include <QMainWindow>
 #include <vector>
 #include <QDebug>
-#include <cmath>
 
 #include "chaining.h"
+#include "checking.h"
 
 
-class Game : QObject
+class Game : public QObject
 {
     Q_OBJECT
 
 private:
     std::vector<std::vector<int>> u;
     QVector<QVector<QPair<int, int>>> chains;
-    QVector<QPair<int, int>> blueChaind, redChaind;
-    Chaining *thread;
+    QVector<QPair<int, int>> u_for_chains, blueChaind, redChaind;
+    size_t finished_chaining_threads;
+    size_t currently_checking_threads;
 public:
     Game();
     //other constructors needed, for replays and resumes
@@ -37,8 +38,16 @@ public:
     void rotate(int, double &, double &);
     ~Game();
 
+signals:
+    void chains_changed();
+
 private slots:
     void NEWchain(sending_type);
+    void chaining_finished();
+    void chaining_check_finished();
+    void ADDchain(sending_twice_type NewOld);
+    void ADDblue(int, int);
+    void ADDred(int, int);
 };
 
 #endif // GAME_H
