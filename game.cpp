@@ -3,6 +3,8 @@
 Game::Game()
 {
     u.push_back({0, 0}); //will be removed, when step will begin with 0
+    finished_chaining_threads = 0;
+    currently_checking_threads = 0;
 }
 //other constructors needed, for replays and resumes
 
@@ -10,17 +12,30 @@ void Game::addPoint(std::vector<int> added)
 {
     u.push_back(added);
 
+    while (true) {
+        if(finished_chaining_threads >= u.size() - 2 && currently_checking_threads == 0)
+        {
+            break;
+        }
+    }
 
-    //must be remade
-
-    typedef QVector<int>  sending_type;               // crutch again
+    typedef QVector<int>  sending_type;
     qRegisterMetaType<sending_type>("sending_type");
 
-    thread = new Chaining(u[u.size()-1][0], u[u.size()-1][1], static_cast<int>(u.size())-1, this);
+    QThread thread;
+    Chaining *chaining = new Chaining(u[u.size()-1][0], u[u.size()-1][1], static_cast<int>(u.size())-1, u_for_chains);
+    chaining->moveToThread(&thread);
 
-    connect(thread, SIGNAL(newChain(sending_type)), this, SLOT(NEWchain(sending_type)));
+    connect(chaining, &Chaining::newChain, this, &Game::NEWchain);
+    connect(&thread, &QThread::finished, this, &Game::chaining_finished);
+    connect(&thread, &QThread::finished, chaining, &QObject::deleteLater);
+    connect(&thread, &QThread::started, chaining, &Chaining::check_chains);
 
-    thread  ->  start();
+    thread.start();
+    thread.quit();
+    thread.wait();
+
+
 }
 
 int Game::getPointX(size_t step)
@@ -110,122 +125,71 @@ int Game::getChainSize(int current_chain)
 
 void Game::NEWchain(sending_type chain)
 {
-    if (chain[0] & 1) {
-        qDebug() << "received red chain: " << chain;
-    }
-    else {
-        qDebug() << "received blue chain: " << chain;
-    }
-    bool circuit_broken = true, chained = false, chain_added = false; //chained never read?
+    qRegisterMetaType<sending_twice_type>("sending_twice_type");
 
-    int broken = 0; //iterator for chained dots in new cycle: if not 0, cycle will not be added in old chains
+    QThread thread;
+    Checking *checking = new Checking(chain, u, chains, blueChaind, redChaind);
+    checking->moveToThread(&thread);
 
+    connect(checking, &Checking::checked, this, &Game::ADDchain, Qt::QueuedConnection);
+    connect(checking, &Checking::red_chained_dot, this, &Game::ADDred, Qt::QueuedConnection);
+    connect(checking, &Checking::blue_chained_dot, this, &Game::ADDblue, Qt::QueuedConnection);
+    connect(&thread, &QThread::finished, this, &Game::chaining_check_finished);
+    connect(&thread, &QThread::finished, checking, &QObject::deleteLater);
+    connect(&thread, &QThread::started, checking, &Checking::check_new_chain);
 
-    //meet the old_chains massive of coordinats of points of chains and color in last member for every chain
-    for (int m = 0; m < chains.size(); ++m) {      //for every old chain
+    ++currently_checking_threads;
 
-        chained = false;
-        chain_added = true; // so chain will not be added in old chains by default
-        qDebug() << u.size() << "dots will be checked";
+    thread.start();
+    thread.quit();
+    thread.wait();
 
+}
 
-        for (size_t k = 0; k < (u.size() - 1); ++k){        // for every dot, except "0" damned dot -> k+1 used
+void Game::chaining_finished()
+{
+    ++finished_chaining_threads;
+    qDebug() << "now threads finished:" << finished_chaining_threads;
+}
 
-            qDebug() << "checking dot chaining...";
-            chained = false;
-            int j = chains[m].size() - 2;
+void Game::chaining_check_finished()
+{
+    --currently_checking_threads;
+}
 
+void Game::ADDchain(sending_twice_type NewOld)
+{
+    chains.push_back(NewOld);
+    emit chains_changed();
 
-            for (int i = 0; i < (chains[m].size() - 1); ++i) { // for every dot in chaining (around) dot
+    //qDebug() << "old_chains:" << chains;
+}
 
-                //now, meet the ith and jth points of chaining edge and chained point coordinates
-                double xi = chains[m][i].first;
-                double yi = chains[m][i].second;
-                double xj = chains[m][j].first;
-                double yj = chains[m][j].second;
-                double point_x = u[k+1][0], point_y = u[k+1][1];
-
-                int beam_angle = 25; // angle for our beam, searching for chaining edges
-                rotate(beam_angle, xi, yi);
-                rotate(beam_angle, xj, yj);
-                rotate(beam_angle, point_x, point_y);
-
-                if ( ( (yi < point_y && yj >= point_y) || (yj < point_y && yi >= point_y) )
-                     &&
-                     (xi + (point_y - yi) / (yj - yi) * (xj - xi) < point_x) ) {
-                    chained = !chained;
-                    qDebug() << "edge at left!";
-                }
-                j = i;
-            }
-            if (chains[m].last().first == (k & 1)) {
-                chained = false; // is our dot not same color as chain?
-
-            }
-
-            qDebug()  << k << "th dot, chained in old chain " << m << " info is: " << chained;
-            qDebug() << "color is same, it is" << (chains[m].last().first == (k & 1));
-
-
-            if (chained) {
-                qDebug() << "chained dot" << k << "detected";
-
-                if (chains[m].last().first & 1) {
-                    blueChaind.push_back(qMakePair(u[k][0], u[k][1]));
-                    qDebug() << "so, blueChaind:" << blueChaind;
-                } else {
-                    redChaind.push_back(qMakePair(u[k][0], u[k][1]));
-                    qDebug() << "so, redChaind:" << redChaind;
-                }
-
-                for (auto checked : chain) {
-                    qDebug() << "checking chain for chained dots...";
-                    if (k == static_cast<size_t>(checked)) {
-                        broken++;
-                        qDebug() << "in new chain found chained dots:" << broken;
-                    }
-                }
-            }
-
-        }
-
-    }
-
-    if ((!chain_added) || (broken == 0)) circuit_broken = false;
-    qDebug() << "circuit is" << circuit_broken << "broken!";
-
-    if (!circuit_broken) {
-        qDebug() << "accepted!" << endl;
-        QVector<QPair<int, int>> NewOld;
-
-        for (int k = 0; k < chain.size(); ++k){
-            NewOld.push_back(qMakePair(u[static_cast<size_t>(chain[k])+1][0],
-                                       u[static_cast<size_t>(chain[k])+1][1]));
-        }
-        qDebug() << "got chain, colored" << (chain[0] & 1) << "in old chains";
-        NewOld.push_back(qMakePair((chain[0] & 1), 0));    //color of chain should be written also???????
-        chains.push_back(NewOld);
-    }
-    qDebug() << "old_chains:" << chains;
-
+void Game::ADDblue(int first, int second)
+{
+    blueChaind.push_back(qMakePair(first, second));
 
     //to remove double counting of chaind dots:
 
     std::sort(blueChaind.begin(), blueChaind.end());
     blueChaind.resize(std::unique(blueChaind.begin(), blueChaind.end()) - blueChaind.begin());
 
+    qDebug() << "blue chained:" << blueChaind;
+
+}
+
+void Game::ADDred(int first, int second)
+{
+    redChaind.push_back(qMakePair(first, second));
+
+    //to remove double counting of chaind dots:
+
     std::sort(redChaind.begin(), redChaind.end());
     redChaind.resize(std::unique(redChaind.begin(), redChaind.end()) - redChaind.begin());
 
-
+    qDebug() << "red chained:" << redChaind;
 }
 
-void Game::rotate(int angle, double &x, double &y)
-{
-    double x1 = x * cos(angle) - y * sin(angle);
-    y = x * sin(angle) + y * cos(angle);
-    x = x1;
-}
 
 Game::~Game()
 {
