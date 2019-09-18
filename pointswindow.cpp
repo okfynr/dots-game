@@ -411,6 +411,9 @@ void PointsWindow::OLDchains()
         int j = current_game->getChainSize(m) - 2;
 
         QPainterPath path;
+        if (current_game->getChainsElem(m, 0) == QPair<size_t, size_t>()) {
+            continue;
+        }
         path.moveTo(current_game->getChainsElem(m, 0).first * cellSize  + (offsetX - 1000) * scale,
                     current_game->getChainsElem(m, 0).second * cellSize + (offsetY - 1000) * scale);
 

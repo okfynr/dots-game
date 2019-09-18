@@ -48,6 +48,7 @@ void Game::setClear()
     chains.clear();
     blueChaind.clear();
     redChaind.clear();
+    u_for_chains.clear();
 
 
     u.clear();
@@ -69,16 +70,20 @@ void Game::deletePoint()
 
         //for every point in this old chain
         for (int j = 0; j < chains[m].size(); ++j) {
-            if ((u[u.size()][0] == chains[m][j].first)
-             && (u[u.size()][1] == chains[m][j].second)) {
+            if ((u[u.size()-1][0] == chains[m][j].first)
+             && (u[u.size()-1][1] == chains[m][j].second)) {
                 deleted_chains.push_back(m);
                 qDebug() << "old chain" << m << "founded to delete because of dot" << chains[m][j];
             }
         }
     }
+
+    deleted_chains.resize(std::unique(deleted_chains.begin(), deleted_chains.end()) - deleted_chains.begin());
+    std::reverse(deleted_chains.begin(), deleted_chains.end());
+
     //delete it:
     for (size_t i = 0; i < deleted_chains.size(); ++i) {
-        chains[deleted_chains[i]].clear();
+        chains.remove(deleted_chains[i]);
         qDebug() << "chain" << deleted_chains[i] << "deleted";
     }
     qDebug() << "old_chains:" << chains;
@@ -88,6 +93,11 @@ void Game::deletePoint()
     // then, delete our dot:
 
     u.pop_back();
+    if (u_for_chains.empty()) {
+        setClear();
+        return;
+    }
+    u_for_chains.pop_back();
 }
 
 size_t Game::getBlueChainedSize()
@@ -102,6 +112,9 @@ size_t Game::getRedChainedSize()
 
 QPair<size_t, size_t> Game::getChainsElem(int current_chain, int current_point)
 {
+    if (chains.empty() || chains[current_chain].empty()) {
+        return QPair<size_t, size_t>();
+    }
     return chains[current_chain][current_point];
 }
 
