@@ -3,14 +3,9 @@
 #include <fstream>
 #include <QDebug>
 #include <vector>
-
+#include <stack>
 
 #include "chaining.h"
-
-
-using std::vector;
-
-
 
 Chaining::Chaining(int xP, int yP, int step, QVector<QPair<int, int> > & dots)
     : Dots(dots)
@@ -20,141 +15,124 @@ Chaining::Chaining(int xP, int yP, int step, QVector<QPair<int, int> > & dots)
     this -> Step = step;
 }
 
-
 Chaining::~Chaining()
 {
-    //qDebug() << "destroyed";
+
 }
 
 void Chaining::check_chains()
 {
-    //algo must be fully remade
+    typedef QVector<int>  sending_type;
+    qRegisterMetaType<sending_type>("sending_type");
+    std::stack<int> dfs_stack;
 
-    edges_color.resize(Step);
-    for (auto & edge_color : edges_color) edge_color = 0;
-    ncycle = 0;     //0 cycles found right here
-    path.resize(Step);
-    edges.resize(Step);
+    //even dots are blue, odds are red
 
-    //qDebug() << "no DFS is coming!" << Edges[0] << " " << Edges[1] << endl;
-    //QVector<QPair<double, double>> redDots, blueDots;
-    //vector<vector<int>> redEdges, blueEdges;
+    bool is_red = (Step - 1) & 1;
+    //only build edges for current color (maybe could be saved and updated)
+    int curr_dots_num(is_red ? (Step + 1) / 2 : (Step + 2) / 2);
+
+    dots_edges.resize(Step);
+    dots_colors.resize(Step);
+    previous_dot.resize(Step);
+    std::fill(dots_colors.begin(), dots_colors.end(), 0);
+    std::fill(previous_dot.begin(), previous_dot.end(), -1);
 
     Dots.push_back(qMakePair(xDot, yDot));
 
-    //qDebug() << "hello, i am here to chain smth: ";
-    //qDebug() << "size of dots vector is " << Dots.size() << endl;
+    for (int i = 0; i < curr_dots_num; ++i) {
+        for (int j = 0; j < curr_dots_num; ++j) {
 
-    //cycle to make edges instead of dots
-    for (int i = 0; i < Step; ++i) {
-        for (int j = 0; j < Step; ++j) {
 
-            if ((    (Dots[i].first == Dots[j].first)
-                  || (Dots[i].first == (Dots[j].first - 1))
-                  || (Dots[i].first == (Dots[j].first + 1)) )
-             && (    (Dots[i].second == Dots[j].second)
-                  || (Dots[i].second == (Dots[j].second - 1))
-                  || (Dots[i].second == (Dots[j].second + 1)) )
-             && (i != j)
-             && ( ((i & 1) && (j & 1)) || !((i & 1) || (j & 1)) ))
+            int curr_dot_i(is_red ? i * 2 + 1 : i * 2);
+            int curr_dot_j(is_red ? j * 2 + 1 : j * 2);
+            //dots are close enough
+            if ((    (Dots[curr_dot_i].first == Dots[curr_dot_j].first)
+                  || (Dots[curr_dot_i].first == (Dots[curr_dot_j].first - 1))
+                  || (Dots[curr_dot_i].first == (Dots[curr_dot_j].first + 1)) )
+             && (    (Dots[curr_dot_i].second == Dots[curr_dot_j].second)
+                  || (Dots[curr_dot_i].second == (Dots[curr_dot_j].second - 1))
+                  || (Dots[curr_dot_i].second == (Dots[curr_dot_j].second + 1)) )
+             //not the same dot
+             && (i != j))
             {
-                edges[i].push_back(j);
+                dots_edges[curr_dot_i].push_back(curr_dot_j);
             }
 
         }
     }
 
+    dfs_stack.push(Step - 1);
+    dots_colors[Step - 1] = 1;
+    while (!dfs_stack.empty()) {
+        int curr_dot = dfs_stack.top();
+        bool dot_has_unseen_dots = false;
+        for (size_t curr_dot_neighbour = 0; curr_dot_neighbour < dots_edges[curr_dot].size(); ++curr_dot_neighbour) {
+            int neighbour = dots_edges[curr_dot][curr_dot_neighbour];
 
-
-    //qDebug() << "then DFS is coming! " << edges;
-    dfs(Step - 1);               // iterator Step begins with 1 and it is useful not here
-
-    typedef QVector<int>  sending_type;
-    qRegisterMetaType<sending_type>("sending_type");
-
-    size_t max = 4;
-    for (size_t i = 0; i < cycle.size(); ++i) {
-        for (size_t j = 0; j < cycle[i].size(); ++j) {
-            if ((cycle[i][j] == (Step - 1)) && (cycle[i].size() > max)) {
-                max = i;
-                sending_type sended;
-                sended.resize(static_cast<int>(cycle[max].size()));
-                sended = sending_type::fromStdVector(cycle[max]);
-                qDebug() << "cycle sent: " << sended << ". ";
-
-                emit newChain(sended);
+            //if that neighbour not the dot we came from, mark that we came to neighbour from current
+            //else skip
+            if (previous_dot[curr_dot] != neighbour) {
+                if (dots_colors[neighbour] == 0) {
+                    previous_dot[neighbour] = curr_dot;
+                }
+            } else {
+                continue;
+            }
+            if (dots_colors[neighbour] == 0) {
+                dots_colors[neighbour] = 1;
+                dfs_stack.push(neighbour);
+                dot_has_unseen_dots = true;
+            } else {
+                if (dfs_stack.size() > 3) {
+                    add_cycle(curr_dot, neighbour);
+                }
             }
         }
+        if (!dot_has_unseen_dots) {
+            dfs_stack.pop();
+            dots_colors[curr_dot] = 2;
+        }
     }
-//    if (max != 0) {
-//    }
-    //qDebug() << cycle << endl;
-    //qDebug() << "but true cycle is " << cycle[max];
 
 }
 
-
-
-size_t Chaining::add_cycle(int cycle_end, int cycle_st)
+void Chaining::add_cycle(int first_dot, int last_dot)
 {
-    cycle.resize(ncycle + 1); // if you're here, 1 cycle already found, so, you need 1 vector to write it
-    //qDebug() << cycle << endl;
-    cycle[ncycle].clear();
-    cycle[ncycle].push_back(cycle_st);
+    sending_type sended;
+    int temp_dot;
 
-    //qDebug() << "current path: " << path << "size: " << path.size();
-    for(int v = cycle_end; v != cycle_st; v = path[v])
-    {
-        //qDebug() << v << "not eq " << cycle_st;
-        cycle[ncycle].push_back(v);
+    //seeking to the root from the beginning
+    int viewed_dot = first_dot;
+    //also exclude case if last dot is next to first
+    while (viewed_dot != -1 && viewed_dot != last_dot) {
+        sended.push_back(viewed_dot);
+        temp_dot = previous_dot[viewed_dot];
+        viewed_dot = temp_dot;
     }
-    cycle[ncycle].push_back(cycle_st);
 
-    reverse(cycle[ncycle].begin(), cycle[ncycle].end());
+    sending_type sended_tail;
+    //seeking to the root from the end
+    viewed_dot = last_dot;
+    //also exclude case if first dot is next to last
+    while (viewed_dot != -1 && viewed_dot != first_dot) {
+        sended_tail.push_back(viewed_dot);
+        temp_dot = previous_dot[viewed_dot];
+        viewed_dot = temp_dot;
+        auto found_dot = std::find(sended.begin(), sended.end(), viewed_dot);
+        if (found_dot != sended.end()) {
+            sended.erase(++found_dot, sended.end());
+            break;
+        }
+    }
 
-    return cycle[ncycle].size();
+    std::for_each(sended_tail.rbegin(), sended_tail.rend(), [&sended](int tail_dot){sended.push_back(tail_dot);});
+    sended.push_back(first_dot);
+
+    if (sended.size() < 5) {
+        return;
+    }
+    qDebug() << "sended: " << sended;
+
+    emit newChain(sended);
 }
-
-void Chaining::dfs(int dfsed_dot)
-{
-
-    edges_color[dfsed_dot] = 1;
-    //qDebug() << "DFS is coming! " << Edges[dfsed_dot].size() << endl;// << Edges.size();        if (i & 1)
-
-    // roaming through all neighbours
-    for(int i = 0; i < edges[dfsed_dot].size(); ++i)
-    {
-        //qDebug() << "DFS is coming!";
-
-        //i-th neighbour of dfsed dot with given key
-        size_t next_dot = edges[dfsed_dot][i];
-        if(edges_color[next_dot] == 0)
-        {
-            path[next_dot] = dfsed_dot;
-            dfs(next_dot);
-        }
-        else if(edges_color[next_dot] == 1)
-        {
-            if(add_cycle(dfsed_dot, next_dot) > 4) {  // avoiding of trivial cases
-                //qDebug() << "cycle found: " << cycle[ncycle] << ". ";
-                ncycle++;
-                path.clear();
-            }
-            else cycle.pop_back();
-        }
-    }
-    edges_color[dfsed_dot] = 0;
-}
-
-/*int Chaining::true_cycle(vector<vector<int>> & cycles, int point)
-{
-    int max = 0;
-    for (auto i = 0; i < (int)cycles.size(); ++i) {
-        for (auto j = 0; j < (int)cycles[i].size(); ++j) {
-            if ((cycles[i][j] == (point - 1)) && ((cycles[i].end() - cycles[i].begin()) > max)) {
-                max = i;
-            }
-        }
-    }
-    return max;
-}*/

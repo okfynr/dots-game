@@ -5,8 +5,8 @@
 #include <QWidget>
 #include <QThread>
 #include <vector>
+#include <stack>
 
-using std::vector;
 
 typedef QVector<int>  sending_type;
 
@@ -29,15 +29,12 @@ private:
 
 
     QVector<QPair<int, int>> & Dots;
-    vector<int> edges_color;
-    size_t ncycle;
-    vector<int> path;
-    QVector<QVector<int>> edges;
-    vector<vector<int>> cycle;
+    std::vector<int> dots_colors;
+    std::vector<int> previous_dot;
+    std::vector<std::vector<int>> dots_edges;
 
-    size_t add_cycle(int, int);
-    void dfs(int);
-    //int true_cycle(vector<vector<int> > &, int);
+
+    void add_cycle(int, int);
 
 };
 

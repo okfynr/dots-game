@@ -36,6 +36,7 @@ public:
     int getChainSize(int);
     void showU(); // for resuming games/replays?
     void rotate(int, double &, double &);
+    bool chainsChecking();
     ~Game();
 
 signals:
