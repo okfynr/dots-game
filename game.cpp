@@ -12,12 +12,6 @@ void Game::addPoint(std::vector<int> added)
 {
     u.push_back(added);
 
-    while (true) {
-        if(finished_chaining_threads >= u.size() - 2 && currently_checking_threads == 0)
-        {
-            break;
-        }
-    }
 
     typedef QVector<int>  sending_type;
     qRegisterMetaType<sending_type>("sending_type");
@@ -119,6 +113,15 @@ int Game::getChainsSize()
 int Game::getChainSize(int current_chain)
 {
     return chains[current_chain].size();
+}
+
+bool Game::chainsChecking()
+{
+    if ((finished_chaining_threads >= u.size() - 2 && currently_checking_threads == 0) || u.size() < 2) {
+        return false;
+    }
+    qDebug() << "no step";
+    return true;
 }
 
 //function for checking new chain for intersections with old chains;

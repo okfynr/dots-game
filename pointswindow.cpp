@@ -164,8 +164,10 @@ void PointsWindow::mousePressEvent(QMouseEvent *event)
 
 
     bool nextstep = true;
+    if (current_game->chainsChecking()) {
+        return;
+    }
     cellSize = 25 * scale;
-    steps++;
     double pointX = std::floor((event->x() + offsetX0 - (offsetX - 1000) * scale) / cellSize + 0.5);
     double pointY = std::floor((event->y() + offsetY0 - (offsetY - 1000) * scale) / cellSize + 0.5);
 
@@ -176,13 +178,13 @@ void PointsWindow::mousePressEvent(QMouseEvent *event)
         {
             nextstep = false;
             //QMessageBox::warning(this, tr("Hey, you"), tr("Point the dot more accurately!"));
-            steps--;
 
         }
     }
 
     if (nextstep)
     {
+        steps++;
         vector<int> added{static_cast<int>(pointX),
                           static_cast<int>(pointY)};
         current_game->addPoint(added);
