@@ -2,5 +2,5 @@
 My version of quite popular in russian region, dots (plantations) game, 
 Wiki: Dots (Czech: Židi, Polish: Kropki, Russian: Точки) is an abstract strategy game, played by two or more people on a sheet of squared paper. The game is superficially similar to Go, except that pieces are not taken, and the primary target of dots is capturing enemy dots by surrounding them with a continuous line of one's own dots. Once surrounded, dots are not playable.
 
-Now, you can play, but some bugs possible, when you try to surround dots, but you have some surrounded dots near your surrouning.
-Also, step back button can cause some undefined bugs.
+Now, you can play, step back and clear game with new game button.
+Game saves, resumes, replays or testing are not available now
